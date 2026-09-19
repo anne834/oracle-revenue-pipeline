@@ -101,3 +101,35 @@ terraform apply
 - EU and US-EAST regions account for ~59% of total leakage
 - 323 out of 500 accounts scored as High risk
 - REP-088 and REP-046 had the highest discount violations
+
+## Dashboard Insights
+
+The Power BI dashboard provides four key views for Oracle's Revenue Operations team:
+
+**1. Total Revenue Leakage (KPI Card)**
+Shows $55K in overuse leakage detected across all accounts. This is the headline number a revenue operations manager sees first thing every morning.
+
+**2. Accounts by Risk Tier (Bar Chart)**
+- 323 accounts scored as **High risk** — immediate action required
+- 128 accounts scored as **Low risk** — monitor only
+- 49 accounts scored as **Medium risk** — review recommended
+
+This chart helps the team prioritize which accounts to investigate first rather than manually reviewing all 500.
+
+**3. Leakage by Region (Donut Chart)**
+- EU: $16.47K (29.9%) — highest leakage region
+- US-EAST: $15.98K (29%) — second highest
+- APAC: $13.86K (25.2%)
+- US-WEST: $8.72K (15.8%)
+
+This tells regional sales managers exactly where to focus their billing correction efforts.
+
+**4. Discount Violations by Sales Rep (Table)**
+Lists every sales rep who applied a discount beyond their authorized ceiling. For example:
+- REP-088 applied 72.92% discount against a 30.07% ceiling
+- REP-046 applied 72.15% discount against a 37.41% ceiling
+
+This table enables sales leadership to take corrective action with specific reps and recover lost margin.
+
+## Dashboard
+![Power BI Dashboard](dashboard.png)
