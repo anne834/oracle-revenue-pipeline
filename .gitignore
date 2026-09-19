@@ -3,11 +3,14 @@ terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
+terraform/generator.zip
+terraform/processor.zip
 
 # Python
 venv/
 __pycache__/
 *.pyc
+*.pycache
 
 # Data files
 *.csv
