@@ -42,6 +42,35 @@ oracle-revenue-pipeline/
 │ └── main.tf # Infrastructure as Code
 └── README.md
 
+## Quick Start
+
+1. Clone the repository:
+```bash
+git clone https://github.com/anne834/oracle-revenue-pipeline.git
+cd oracle-revenue-pipeline
+```
+
+2. Install dependencies:
+```bash
+pip install faker pandas scikit-learn pytest
+```
+
+3. Generate synthetic data:
+```bash
+python generate_data.py
+```
+
+4. Run PyTest unit test suite:
+```bash
+pytest test_pipeline.py
+```
+
+5. Deploy cloud infrastructure via Terraform:
+```bash
+cd terraform
+terraform init
+terraform apply
+```
 
 ## ML Models
 **Isolation Forest** (unsupervised) — detects anomalous accounts without labeled data
