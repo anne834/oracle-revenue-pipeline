@@ -18,12 +18,7 @@ An automated pipeline that joins usage, contract, and billing data daily, flags 
 - **295 discount violations** identified across sales reps
 
 ## Architecture
-EventBridge (daily cron)
-→ AWS Step Functions (orchestrator)
-→ Lambda 1: generates and ingests data to S3
-→ Lambda 2: cleans, joins, scores leakage
-→ S3 (Hive-partitioned data lake)
-→ Power BI dashboard
+![Pipeline Architecture](architecture.png)
 
 
 ## Tech Stack
