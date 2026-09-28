@@ -5,11 +5,28 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
 }
 
 provider "aws" {
   region = "us-east-2"
+}
+
+# ── Build Lambda zips from source in the repo ──────────────────────────
+data "archive_file" "generator" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/generator"
+  output_path = "${path.module}/generator.zip"
+}
+
+data "archive_file" "processor" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/processor"
+  output_path = "${path.module}/processor.zip"
 }
 
 # ── S3 Bucket ──────────────────────────────────────────────────────────
@@ -55,12 +72,13 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 # ── Lambda Function 1: Data Generator ─────────────────────────────────
 resource "aws_lambda_function" "data_generator" {
-  filename      = "generator.zip"
-  function_name = "oracle-revenue-pipeline-tf"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.12"
-  timeout       = 30
+  filename         = data.archive_file.generator.output_path
+  source_code_hash = data.archive_file.generator.output_base64sha256
+  function_name    = "oracle-revenue-pipeline-tf"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 30
 
   tags = {
     Project = "Revenue Leakage Detection"
@@ -69,12 +87,13 @@ resource "aws_lambda_function" "data_generator" {
 
 # ── Lambda Function 2: Data Processor ─────────────────────────────────
 resource "aws_lambda_function" "data_processor" {
-  filename      = "processor.zip"
-  function_name = "oracle-pipeline-processor-tf"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.12"
-  timeout       = 30
+  filename         = data.archive_file.processor.output_path
+  source_code_hash = data.archive_file.processor.output_base64sha256
+  function_name    = "oracle-pipeline-processor-tf"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 30
 
   tags = {
     Project = "Revenue Leakage Detection"
