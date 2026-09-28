@@ -37,10 +37,12 @@ jobs:
       - name: Bundle Lambda dependencies
         working-directory: .
         run: pip install -r lambda/generator/requirements.txt -t lambda/generator/vendor --no-compile
-
+        
       - name: Build scikit-learn layer
         working-directory: .
-        run: pip install -r layer_requirements.txt -t layer/python --platform manylinux_2_28_x86_64 --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp --no-compile
+        run: |
+          pip install -r layer_requirements.txt -t layer/python --platform manylinux_2_28_x86_64 --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp --no-compile
+      
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
