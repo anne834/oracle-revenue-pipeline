@@ -1,53 +1,68 @@
-import pandas as pd
+import csv
+import importlib.util
+import io
 import random
-import pytest
+from pathlib import Path
 
-# ── Helper function to generate test data ─────────────────────────────
-def generate_contracts(n=500):
-    contracts = []
-    for i in range(n):
-        contracts.append({
-            'account_id': f'ACC-{i:04d}',
-            'contracted_compute_hours': random.randint(500, 10000),
-            'contracted_storage_tb': random.randint(1, 100),
-            'discount_ceiling_pct': round(random.uniform(5, 30), 2),
-            'region': random.choice(['US-EAST', 'US-WEST', 'EU', 'APAC']),
-            'assigned_rep_id': f'REP-{random.randint(1, 200):03d}'
-        })
-    return pd.DataFrame(contracts)
+ROOT = Path(__file__).parent
 
-# ── Test 1: Contract data has correct shape ────────────────────────────
-def test_contract_shape():
-    df = generate_contracts(500)
-    assert df.shape[0] == 500, "Should have 500 rows"
-    assert df.shape[1] == 6, "Should have 6 columns"
-    print("✓ Test 1 passed: Contract data shape is correct")
 
-# ── Test 2: No duplicate account IDs ──────────────────────────────────
-def test_no_duplicate_accounts():
-    df = generate_contracts(500)
-    assert df['account_id'].nunique() == 500, "All account IDs should be unique"
-    print("✓ Test 2 passed: No duplicate account IDs")
+def load(name, rel_path):
+    spec = importlib.util.spec_from_file_location(name, ROOT / rel_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-# ── Test 3: Leakage flag logic is correct ─────────────────────────────
-def test_leakage_flag_logic():
-    df = generate_contracts(500)
-    df['actual_compute_hours'] = df['contracted_compute_hours'] * 1.2
-    df['overuse_flag'] = df['actual_compute_hours'] > df['contracted_compute_hours']
-    assert df['overuse_flag'].all(), "All accounts should be flagged as overuse"
-    print("✓ Test 3 passed: Leakage flag logic is correct")
 
-# ── Test 4: Discount violation detection ──────────────────────────────
-def test_discount_violation_detection():
-    df = generate_contracts(500)
-    df['applied_discount_pct'] = 50  # force all discounts above ceiling
-    df['discount_violation_flag'] = df['applied_discount_pct'] > df['discount_ceiling_pct']
-    assert df['discount_violation_flag'].all(), "All accounts should have discount violations"
-    print("✓ Test 4 passed: Discount violation detection works correctly")
+generator = load("generator_lambda", "lambda/generator/lambda_function.py")
+processor = load("processor_lambda", "lambda/processor/lambda_function.py")
 
-# ── Test 5: Region values are valid ───────────────────────────────────
-def test_valid_regions():
-    df = generate_contracts(500)
-    valid_regions = ['US-EAST', 'US-WEST', 'EU', 'APAC']
-    assert df['region'].isin(valid_regions).all(), "All regions should be valid"
-    print("✓ Test 5 passed: All region values are valid")
+
+def roundtrip(rows):
+    """Write rows to CSV text and read them back, exactly as the processor reads from S3."""
+    text = generator.to_csv(rows).decode("utf-8")
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def make_rows(n=300):
+    random.seed(0)
+    contracts, usage, billing = generator.generate_dataset(n)
+    return processor.build_rows(roundtrip(contracts), roundtrip(usage), roundtrip(billing))
+
+
+def test_generator_row_counts_and_unique_ids():
+    contracts, usage, billing = generator.generate_dataset(200)
+    assert len(contracts) == len(usage) == len(billing) == 200
+    assert len({c["account_id"] for c in contracts}) == 200
+
+
+def test_generator_regions_are_valid():
+    contracts, _, _ = generator.generate_dataset(200)
+    assert {c["region"] for c in contracts} <= set(generator.REGIONS)
+
+
+def test_discount_violation_flag_matches_rule():
+    _, _, billing = generator.generate_dataset(200)
+    for b in billing:
+        assert b["discount_violation_flag"] == (
+            b["applied_discount_pct"] > b["discount_ceiling_pct"]
+        )
+
+
+def test_build_rows_joins_and_computes_unbilled():
+    rows = make_rows(200)
+    assert len(rows) == 200
+    for r in rows:
+        if r["underbilled_flag"]:
+            assert r["unbilled_usd"] > 0
+        else:
+            assert r["unbilled_usd"] == 0
+
+
+def test_detect_summary_is_consistent():
+    rows, summary = processor.detect(make_rows(300))
+    assert summary["accounts"] == 300
+    assert summary["underbilled_accounts"] == sum(r["underbilled_flag"] for r in rows)
+    assert summary["discount_violations"] == sum(r["discount_violation_flag"] for r in rows)
+    assert "logreg_recall_holdout" in summary
+    assert all("isolation_forest_flag" in r for r in rows)
