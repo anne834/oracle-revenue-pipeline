@@ -29,6 +29,12 @@ data "archive_file" "processor" {
   output_path = "${path.module}/processor.zip"
 }
 
+data "archive_file" "layer" {
+  type        = "zip"
+  source_dir  = "${path.module}/../layer"
+  output_path = "${path.module}/layer.zip"
+}
+
 # ── S3 Bucket ──────────────────────────────────────────────────────────
 resource "aws_s3_bucket" "oracle_pipeline" {
   bucket = "oracle-revenue-pipeline-tf"
@@ -38,6 +44,23 @@ resource "aws_s3_bucket" "oracle_pipeline" {
     Environment = "Dev"
     Project     = "Revenue Leakage Detection"
   }
+}
+
+# ── scikit-learn Lambda layer (uploaded via S3, zip is over 50 MB) ─────
+resource "aws_s3_object" "layer_zip" {
+  bucket = aws_s3_bucket.oracle_pipeline.bucket
+  key    = "layers/sklearn-layer.zip"
+  source = data.archive_file.layer.output_path
+  etag   = data.archive_file.layer.output_md5
+}
+
+resource "aws_lambda_layer_version" "sklearn" {
+  layer_name               = "oracle-sklearn-layer"
+  s3_bucket                = aws_s3_bucket.oracle_pipeline.bucket
+  s3_key                   = aws_s3_object.layer_zip.key
+  source_code_hash         = data.archive_file.layer.output_base64sha256
+  compatible_runtimes      = ["python3.12"]
+  compatible_architectures = ["x86_64"]
 }
 
 # ── IAM Role for Lambda ────────────────────────────────────────────────
@@ -100,7 +123,15 @@ resource "aws_lambda_function" "data_processor" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  timeout          = 30
+  timeout          = 120
+  memory_size      = 1024
+  layers           = [aws_lambda_layer_version.sklearn.arn]
+
+  environment {
+    variables = {
+      BUCKET = aws_s3_bucket.oracle_pipeline.bucket
+    }
+  }
 
   tags = {
     Project = "Revenue Leakage Detection"
