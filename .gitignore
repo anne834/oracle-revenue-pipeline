@@ -2,13 +2,16 @@
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.backup
+terraform/*.tfstate.*
 terraform/generator.zip
 terraform/processor.zip
+terraform/layer.zip
 *.tfplan
 tfplan
 
 # Lambda build output (rebuilt in CI, never committed)
 lambda/generator/vendor/
+layer/
 
 # Python
 venv/
