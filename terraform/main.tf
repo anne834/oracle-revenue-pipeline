@@ -78,7 +78,14 @@ resource "aws_lambda_function" "data_generator" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  timeout          = 30
+  timeout          = 60
+  memory_size      = 256
+
+  environment {
+    variables = {
+      BUCKET = aws_s3_bucket.oracle_pipeline.bucket
+    }
+  }
 
   tags = {
     Project = "Revenue Leakage Detection"
@@ -151,7 +158,7 @@ resource "aws_sfn_state_machine" "pipeline" {
         Parameters = {
           FunctionName = aws_lambda_function.data_processor.function_name
           Payload = {
-            date = "2026-09-19"
+            "date.$" = "$.generateResult.Payload.date"
           }
         }
         ResultPath = "$.processResult"

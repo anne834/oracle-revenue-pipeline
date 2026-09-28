@@ -34,6 +34,10 @@ jobs:
         working-directory: .
         run: pytest test_pipeline.py -v
 
+      - name: Bundle Lambda dependencies
+        working-directory: .
+        run: pip install -r lambda/generator/requirements.txt -t lambda/generator/vendor --no-compile
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

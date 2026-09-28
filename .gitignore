@@ -2,15 +2,24 @@
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.backup
-terraform/.terraform.lock.hcl
 terraform/generator.zip
 terraform/processor.zip
+*.tfplan
+tfplan
+
+# Lambda build output (rebuilt in CI, never committed)
+lambda/generator/vendor/
 
 # Python
 venv/
 __pycache__/
 *.pyc
-*.pycache
+.pytest_cache/
+
+# Secrets (never commit)
+.env
+*.pem
+*.csv.bak
 
 # Data files
 *.csv
