@@ -54,6 +54,11 @@ def detect(rows, seed=42):
     iso = IsolationForest(contamination=0.15, random_state=seed)
     iso_pred = iso.fit_predict(X) == -1
 
+    # Any injected leakage type counts as "leaky" for scoring Isolation Forest
+    truth = np.array(
+        [r["underbilled_flag"] or r["overuse_flag"] or r["discount_violation_flag"] for r in rows]
+    )
+
     summary = {
         "accounts": len(rows),
         "overuse_accounts": sum(r["overuse_flag"] for r in rows),
@@ -62,6 +67,9 @@ def detect(rows, seed=42):
         "discount_violations": sum(r["discount_violation_flag"] for r in rows),
         "isolation_forest_flagged": int(iso_pred.sum()),
     }
+    if iso_pred.any() and truth.any():
+        summary["isolation_forest_precision"] = round(float(precision_score(truth, iso_pred)), 3)
+        summary["isolation_forest_recall"] = round(float(recall_score(truth, iso_pred)), 3)
 
     lr_pred = np.zeros(len(rows), dtype=bool)
     if 0 < y.sum() < len(y):
