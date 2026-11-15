@@ -28,6 +28,18 @@ Computed from the CSVs written by `generate_data.py`; reproduce with `python ana
 
 The Power BI dashboard below was built from this dataset (its $55.02K is the overuse figure).
 
+**Models (Colab notebook: [`notebooks/oracle_revenue_pipeline.ipynb`](notebooks/oracle_revenue_pipeline.ipynb))**
+
+| Model | Result |
+|---|---|
+| Logistic Regression (target: any leakage flag, 80/20 split, 100 test accounts) | Leaky class: **97% precision, 99% recall** |
+| Risk tiers from Logistic Regression probability | 323 High, 128 Low, 49 Medium |
+| Isolation Forest (`contamination=0.15`) | 75 accounts flagged (not scored in the notebook) |
+
+The notebook computes `leakage_usd` (overuse dollars), the billing gap, the risk score and tier, and exports the dataset the Power BI dashboard reads.
+
+> **Reading these metrics:** the target (any leakage flag) is defined from the same columns used as model features (applied discount vs ceiling, usage vs contract, billed vs expected), so the model is largely recovering the rule that created the label. The test set is 100 accounts, and risk scores are computed on all 500. The scores show the pipeline works, not real-world accuracy.
+
 ### Deployed pipeline (AWS, one daily run)
 The Lambda pipeline generates a fresh random dataset each day, so totals vary. An example run:
 
@@ -117,6 +129,8 @@ oracle-revenue-pipeline/
 ├── generate_data.py                  # Local synthetic data script
 ├── generate_contracts.py             # Local contract generator
 ├── analyze_local.py                  # Reproduces the initial-run figures from the CSVs
+├── notebooks/
+│   └── oracle_revenue_pipeline.ipynb # Colab: leakage $, models, risk tiers, Power BI export
 ├── test_pipeline.py                  # PyTest unit tests
 └── README.md
 ```
@@ -167,7 +181,7 @@ terraform apply
 
 ## Dashboard Insights
 
-The Power BI dashboard was built from the initial local synthetic dataset (see Results) and shows the reporting layer for the pipeline's output. Risk tiers come from that earlier version; the deployed processor does not assign them yet. It provides four views for a Revenue Operations team:
+The Power BI dashboard was built from the initial local synthetic dataset (see Results) and shows the reporting layer for the pipeline's output. Risk tiers come from the Colab notebook; the deployed processor does not assign them yet. It provides four views for a Revenue Operations team:
 
 **1. Total Revenue Leakage (KPI Card)**
 Shows $55K in overuse leakage detected across all accounts, the headline number a revenue operations manager sees first.
